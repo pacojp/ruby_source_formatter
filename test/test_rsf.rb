@@ -251,6 +251,16 @@ e = M * c**2
 names.select {|name|name.start_with?("S")}.map{|name|name.upcase}
 ========================================
 names.select { |name| name.start_with?("S") }.map { |name| name.upcase }
+EOF
+    test.split(/========================================\n/m).each_slice(2) do |from,should_be|
+      assert_format should_be.chomp, from.chomp
+    end
+  end
+end
+__END__
+
+以下未達成テスト
+
 ========================================
 # TODO このテストケースから再開
 # 列揃えだけど、複数回数の概念が必要になる、、、、
@@ -265,9 +275,3 @@ names.select { |name| name.start_with?("S") }.map { |name| name.upcase }
   cc  = { one: 1, two: 2 }
 
   dddddd = {}
-EOF
-    test.split(/========================================\n/m).each_slice(2) do |from,should_be|
-      assert_format should_be.chomp, from.chomp
-    end
-  end
-end

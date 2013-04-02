@@ -2,6 +2,8 @@
 
 
 # ruby 1.9.2以上必須
+require 'rubygems' # 1.8.7向けrequire (Gemが無いって言われるので)
+
 target = "1.9.2"
 if Gem::Version.new(RUBY_VERSION.dup) < Gem::Version.new(target)
   puts "Use ruby #{target}+ (Your version is #{RUBY_VERSION})"
@@ -30,7 +32,7 @@ module RubySourceFormatter
 
   # デバッグする際はコメントアウト
   def debug(st)
-    puts st
+    #puts st
   end
 
   def indent
