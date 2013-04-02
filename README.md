@@ -3,6 +3,8 @@ ruby_source_formatter
 
 formatting my ruby source :-)
 
+check test/test_rsf.rb for understand what this program aim to do.
+
 # TODO
 
 * support more format
