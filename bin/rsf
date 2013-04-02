@@ -1,0 +1,374 @@
+#!/usr/bin/env ruby
+
+
+# ruby 1.9.2以上必須
+target = "1.9.2"
+if Gem::Version.new(RUBY_VERSION.dup) < Gem::Version.new(target)
+  puts "Use ruby #{target}+ (Your version is #{RUBY_VERSION})"
+  exit(1)
+end
+
+require 'ripper'
+require 'pp'
+
+module RubySourceFormatter
+
+  # この文字で始まった場合は意図的な改行処理
+  # （カンマで改行するとか）を行わない
+  NO_RETS = %w|if unless def|
+
+  # 行がこの文字で始まっている場合は
+  # 列調整を行わない(=とかでそろえるやつね)
+  ADJUST_EXCEPTSIONS = %w|else end|.concat(NO_RETS)
+
+  def proceed(opt={})
+    #cmd = :all
+    argv  = opt[:argv]  || ARGV
+    input = opt[:input] || STDIN.read
+    format(input)
+  end
+
+  # デバッグする際はコメントアウト
+  def debug(st)
+    puts st
+  end
+
+  def indent
+    @indent ||= 0
+    @indent = 0 if @indent < 0
+    "  " * @indent
+  end
+
+  def plus_indent
+    @indent ||= 0
+    @indent += 1
+    debug "plus_indent"
+    debug "indent:#{@indent}"
+  end
+
+  def minus_indent
+    @indent ||= 1
+    @indent -= 1
+    debug "minus_indent"
+    debug "indent:#{@indent}"
+  end
+
+  def add(st)
+    debug "add:#{st}"
+    init_line
+    @last_action_return = false
+    @line.last << st
+  end
+
+  def init_line
+    unless @line
+      debug "init_line"
+      @line        = [indent]
+      @no_ret      = 0
+      @block       = false
+      @indent_next = false
+    end
+  end
+
+  def ret(force=false)
+    debug "try_return:"
+    debug "@indent_next:#{@indent_next}"
+    debug "@last_action_return:#{@last_action_return}"
+    unless @line
+      # { で改行した場合は追加で改行レコードを入れたくないので
+      if [:on_nl, :on_ignored_nl].include? @previous_on
+        @lines << [""]
+        @last_action_return = true
+      end
+      return
+    end
+    if !@last_action_return && (force || !@next || @next[1] != :on_comment)
+      @last_action_return = true
+      debug "do_ret:"
+      @line.last.rstrip!
+      if @line.size > 1 && @line.last == ""
+        @line.delete_at(@line.size - 1)
+      end
+      @lines << @line
+      plus_indent if @indent_next
+      @line = nil
+    else
+    end
+  end
+
+  def return?
+    (!@block && @no_ret < 1 && !@indent_next).tap{|ret| debug "return?:#{ret}"}
+  end
+
+  def op(c)
+    debug "op:#{c}"
+    @last_action_return = false
+    init_line
+
+    if return? && @line.size == 1
+      @indent_next = true if NO_RETS.include?(c)
+      #@line.last.rstrip!
+      @line << c
+      @line << ""
+      @last_action_return = true
+    else
+      case c
+      when '**'
+        add("#{c}")
+      when '|'
+        # each do || の想定
+        # 対応する@no_ret -= 1 はない（いらんやろ）
+        @no_ret += 1
+        if @block && @block_attr_started
+          add("#{c} ")
+          @block_attr_started = false
+        else
+          @block_attr_started = true if @block
+          add("#{c}")
+        end
+      else
+        add(" #{c} ")
+      end
+    end
+  end
+
+  def set_next_previous(ar,index)
+    @next     = nil
+    @previous = nil
+
+    return if ar.size < 2
+    if index > 0
+      @previous = ar[index - 1] rescue nil
+    end
+    @next = ar[index+1] rescue nil
+  end
+
+  def next_on
+    if @next
+      @next[1]
+    end
+  end
+
+  def previous_on
+    if @previous
+      @previous[1]
+    end
+  end
+
+  def init
+    @lines  = []
+    @indent = 0
+    @no_ret = 0
+    @last_action_return = false
+  end
+
+  def format(st)
+    debug "=" * 40
+    min_indent = 0
+    if st =~ /^(\s)+/
+      min_indent = $1.size / 2
+    end
+    # とりあえずハッシュの中身だけをフォーマットしたいときも
+    # あるので{}で囲む
+    add_brace = false
+    if st.strip =~ /^\{/ && st.strip =~ /\}$/
+    else
+      add_brace = true
+      st = "{\n#{st}\n}"
+    end
+
+    init
+    array = Ripper.lex(st)
+
+    # 基本インデントを決定する
+    array.each do |ar|
+      unless add_brace
+        break if ar[1] == :on_lbrace
+      end
+      if ar[1] == :on_sp
+        @indent = (ar[2].size / 2)
+        break
+      end
+    end
+    if @indent == 0 && min_indent != 0
+      @indent = min_indent
+    end
+    init_line
+
+    debug "start at @indent:#{@indent}"
+
+    # スペース要素は基本いらないので削除
+    array.delete_if{|ar|ar[1] == :on_sp}
+
+    # メインループ
+    array.each_with_index do |ar,i|
+      debug "--"
+      debug "@line:#{@line.inspect}"
+      debug ar.inspect
+      if add_brace
+        if i == 0 || i >= array.size - 1
+          debug "SKIPPING!"
+          next
+        end
+      end
+
+      # 次の要素が何かで処理が変わる場合があるので代入
+      set_next_previous array,i
+
+      c = ar[2]
+      case ar[1]
+      when :on_lbrace
+        if [:on_rbrace, :on_op].include?(next_on)
+          @no_ret += 1
+        end
+        if previous_on == :on_ident
+          @block = true
+        end
+        if return?
+          if !@line || @line.last != ""
+            ret
+          end
+          add c
+          plus_indent
+          ret
+        else
+          if @block
+            add " #{c} "
+          else
+            add c
+          end
+        end
+      when :on_rbrace
+        if return?
+          minus_indent
+          ret
+          add c
+          ret
+        elsif @block
+          # ブロックの締めの}
+          add " #{c}"
+        else
+          add c
+        end
+        if previous_on == :on_rbrace
+          @no_ret -= 1
+        end
+      when :on_op
+          op c
+      when :on_comma
+        add ","
+        if return?
+          ret
+        else
+          add " "
+        end
+      when :on_label
+        add c
+        op ''
+      when :on_lbracket,:on_lparen
+        add c
+        @no_ret += 1
+      when :on_rbracket,:on_rparen
+        add c
+        @no_ret -= 1
+      when :on_semicolon
+        if [:on_nl, :on_ignored_nl].include? next_on
+          add c
+          ret
+        else
+          add "#{c} "
+        end
+      when :on_kw
+        case c
+        when *NO_RETS
+          add ''
+          op c
+          @no_ret += 1
+          debug "@no_ret:#{@no_ret}"
+        when 'end'
+          minus_indent
+          unless previous_on == :on_nl
+            ret
+          end
+          add c
+        when 'else'
+          minus_indent
+          ret
+          add c
+          plus_indent
+          ret
+        when 'do'
+          @no_ret += 1 # これ以降自動で改行しない
+          @indent_next = true
+          add " #{c} "
+        else
+          add c
+        end
+      when :on_comment
+        ret unless return?
+        if !@line || @line.last.strip == ""
+          add c
+        else
+          add " #{c}"
+        end
+        ret(true) # コメントの後は強制改行
+      when :on_ignored_nl
+        ret
+      when :on_nl
+        ret
+      when :on_space
+      when :on_tstring_beg
+        if @line &&
+          @line.last.strip != '' && 
+          ![:on_lparen,:on_comma].include?(previous_on)
+          add " #{c}"
+        else
+          add c
+        end
+      else
+        add c
+      end
+      debug "@line:#{@line.inspect}"
+    end
+    ret if @line
+    while @lines[0] == [""]
+      @lines.delete_at(0)
+    end
+    while @lines[-1] == [""]
+      @lines.delete_at(-1)
+    end
+    max_len = 0
+    @lines.each do |ar|
+      # コメントオンリー行スキップ
+      next if ar[0].strip =~ /^(#|#{ADJUST_EXCEPTSIONS.join("|")})/
+      next if ar.size < 3
+      max_len = ar[0].size if ar[0].size > max_len
+    end
+    debug @lines.pretty_inspect
+    debug "max_len:#{max_len}"
+    @lines.map do |ar|
+      if ar.size < 2
+        ar.join(" ")
+      else
+        # HACKME 以下きれいに、、、、
+        if ar[1] == ""
+          ar[0] + (' ' * (max_len - ar[0].size)) + ' ' + ar[2..-1].join(" ")
+        elsif NO_RETS.include? ar[1]
+          ar[0] + ar[1..-1].join(" ")
+        elsif ar.size == 2 && ar[1] == "="
+          ar.join(" ")
+        elsif ar[1] == "=" && ar[2] == "{"
+          ar.join(" ")
+        else
+          ar[0] + (' ' * (max_len - ar[0].size)) + ' ' + ar[1..-1].join(" ")
+        end
+      end
+    end.join("\n").tap{|o| debug o}
+  end
+end
+
+if __FILE__ == $0
+  extend RubySourceFormatter
+  puts proceed
+end
+
