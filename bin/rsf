@@ -30,7 +30,7 @@ module RubySourceFormatter
 
   # デバッグする際はコメントアウト
   def debug(st)
-    #puts st
+    puts st
   end
 
   def indent
@@ -104,6 +104,25 @@ module RubySourceFormatter
     end
   end
 
+  def count_tl_nl_or(on,_til=nil)
+    i = @array_index + 1
+    cnt = 0
+    if Array === _til
+      til = _til
+    else
+      til = [_til]
+    end
+    while obj = @array[i][1] do
+      cnt += 1 if obj == on
+      break if %w[:on_nl, :on_ignored_nl].include?(on)
+      break if til.include?(obj)
+      i +=1
+    end
+
+    debug "count_tl_nl_or:[target:#{on}/count:#{cnt}]"
+    cnt
+  end
+
   def return?
     (!block? && !next?(:on_comment) && @no_ret_counter < 1 && !@indent_next).tap{|ret| debug "return?:#{ret}"}
   end
@@ -150,16 +169,17 @@ module RubySourceFormatter
     end
   end
 
-  def set_next_previous(ar,index)
+  def set_next_previous
     @next     = nil
     @previous = nil
 
-    return if ar.size < 2
-    if index > 0
-      @previous = ar[index - 1] rescue nil
+    return if @array.size < 2
+    if @array_index > 0
+      @previous = @array[@array_index - 1] rescue nil
     end
-    @next = ar[index + 1] rescue nil
+    @next = @array[@array_index + 1] rescue nil
   end
+
 
   def next_on
     @next[1] if @next
@@ -205,10 +225,10 @@ module RubySourceFormatter
     end
 
     init
-    array = Ripper.lex(st)
+    @array = Ripper.lex(st)
 
     # 基本インデントを決定する
-    array.each do |ar|
+    @array.each do |ar|
       unless add_brace
         break if ar[1] == :on_lbrace
       end
@@ -225,27 +245,35 @@ module RubySourceFormatter
     debug "start at @indent:#{@indent}"
 
     # スペース要素は基本いらないので削除
-    array.delete_if{|ar|ar[1] == :on_sp}
+    @array.delete_if{|ar|ar[1] == :on_sp}
 
     # メインループ
-    array.each_with_index do |ar,i|
+    @array.each_with_index do |ar,i|
       debug "--"
       debug "@line:#{@line.inspect}"
       debug "c:#{ar[2]}"
       debug ar.inspect
+      @array_index = i
+
       if add_brace
-        if i == 0 || i >= array.size - 1
+        if i == 0 || i >= @array.size - 1
           debug "SKIPPING!"
           next
         end
       end
 
       # 次の要素が何かで処理が変わる場合があるので代入
-      set_next_previous array,i
+      set_next_previous
 
       c = ar[2]
       case type = ar[1]
       when :on_lbrace
+        # ハッシュ内の組み合わせが2つ以下の場合の想定
+        # {}
+        # {a:1,b:2}
+        if count_tl_nl_or(:on_comma,:on_rbrace) < 2
+          @no_ret_counter += 1
+        end
         if next? :on_rbrace, :on_op
           @no_ret_counter += 1
         end
