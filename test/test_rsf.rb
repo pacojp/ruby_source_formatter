@@ -9,7 +9,7 @@ class TestRsf < Test::Unit::TestCase
   end
 
   def assert_format(should_be, from)
-    assert_equal should_be, @klass.format(from)
+    assert_equal should_be, @klass.format(from).chomp
   end
 
   def test_all
@@ -66,6 +66,18 @@ b  => b,
   :ccc => 'c'
 }
 ========================================
+hash= {a:a,bb:123}
+========================================
+hash = { a: a, bb: 123 }
+========================================
+hash = {a:a,bb:123,:ccc=>'c'}
+========================================
+hash = {
+  a:   a,
+  bb:  123,
+  :ccc => 'c'
+}
+========================================
   {
     a:a, # comment
     bb:123,:ccc=>'c'}
@@ -118,6 +130,7 @@ def some_method(arg1=:default,arg2=nil,arg3=[])
 end
 ========================================
 def some_method(arg1 = :default, arg2 = nil, arg3 = [])
+
 end
 ========================================
   a = [1,2,3,4]
@@ -169,6 +182,18 @@ end
   @aa   ||= 0
   @bbb  = 0 if @indent < 0
   @cccc ||= 0
+========================================
+  if true
+    a = 1
+else
+    b= 2
+  end
+========================================
+  if true
+    a = 1
+  else
+    b = 2
+  end
 ========================================
   if ar == [1,2]
     a = [1,2,3,4]
@@ -223,44 +248,95 @@ names.select { |name| name.start_with?("S") }.map { |name| name.upcase }
 [1,2,3].each{|e|puts e}# 中括弧周辺
 ========================================
 [1, 2, 3].each { |e| puts e } # 中括弧周辺
-EOF
-
-    test.split(/========================================\n/m).each_slice(2) do |from,should_be|
-      assert_format should_be.chomp, from.chomp
-    end
-  end
-end
-__END__
-
-以下未達成テスト
-
 ========================================
-# TODO このテストケースから再開
-# 列揃えだけど、複数回数の概念が必要になる、、、、
+  a = 1
+  bb = 1
+
+  c = 2
+========================================
+  a  = 1
+  bb = 1
+
+  c = 2
+========================================
   a={}
-  bbb={"1"=>1}
+  bb={"1"=>1}
   cc = {one:1,two:2 }
-  d = {one:1,two:2,:three:3 }
-  eee = {one:1,two:2,:three:3,   four:4 }
+  d = {d_one:1,d_two:2,d_three:3 }
+  eee = {eee_one:1,eee_two:2,eee_three:3,   eee_four:4 }
+  ffff = {}
+========================================
+  a    = {}
+  bb   = { "1" => 1 }
+  cc   = { one: 1, two: 2 }
+  d    = {
+    d_one:   1,
+    d_two:   2,
+    d_three: 3
+  }
+  eee  = {
+    eee_one:   1,
+    eee_two:   2,
+    eee_three: 3,
+    eee_four:  4
+  }
+  ffff = {}
+========================================
+  a={}
+  bb={"1"=>1}
+
+  cc = {one:1,two:2 }
+  d = {d_one:1,d_two:2,d_three:3 }
+  eee = {eee_one:1,eee_two:2,eee_three:3,   eee_four:4 }
 
   ffff = {}
 ========================================
-  a   = {}
-  bbb = { "1" => 1 }
+  a  = {}
+  bb = { "1" => 1 }
+
   cc  = { one: 1, two: 2 }
   d   = {
-    one: 1,
-    two: 2,
-    three:3
+    d_one:   1,
+    d_two:   2,
+    d_three: 3
   }
   eee = {
-    one: 1,
-    two: 2,
-    three: 3,
-    four: 4
+    eee_one:   1,
+    eee_two:   2,
+    eee_three: 3,
+    eee_four:  4
   }
 
-  dddddd = {}
+  ffff = {}
+========================================
+  a={}
+  bbbbb={"1"=>1}
+
+  cc = {one:1,two:2 }
+  d = {d_one:1,d_two:2,d_three:3 }
+
+  eee = {eee_one:1,eee_two:2,eee_three:3,   eee_four:4 }
+
+  ffff = {}
+========================================
+  a     = {}
+  bbbbb = { "1" => 1 }
+
+  cc = { one: 1, two: 2 }
+  d  = {
+    d_one:   1,
+    d_two:   2,
+    d_three: 3
+  }
+
+  eee = {
+    eee_one:   1,
+    eee_two:   2,
+    eee_three: 3,
+    eee_four:  4
+  }
+
+  ffff = {}
 ========================================
   test = {
 a:a, # comment
@@ -301,3 +377,35 @@ bb:123,ccc:'c'}
   hash.each do |_, v|
     result = v.map { |k, v| v + 1 }
   end
+EOF
+
+    test.split(/^====.*?\n/m).each_slice(2) do |from,should_be|
+    #test.split(/========================================\n/m).each_slice(2) do |from,should_be|
+      assert_format should_be.chomp, from.chomp
+    end
+  end
+end
+__END__
+
+以下未達成テスト
+
+========================================
+  def indent
+    @indent ||= 0
+    @indent = 0 if @indent < 0
+    "  " * @indent
+  end
+========================================
+  def indent
+    @indent ||= 0
+    @indent = 0 if @indent < 0
+    "  " * @indent
+  end
+
+
+========== ラベル失敗 でソースが消えないように
+d = {one:1,:two:2 }
+c = 1
+========================================
+d = { one:1, :two: 3 }
+c = 1
