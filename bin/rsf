@@ -55,8 +55,8 @@ module RubySourceFormatter
   # 単体で動かしたいので簡単な木構造を用意
   def indent_block_to_child
     @max_indent_block_num += 1
-    i = @indent_block_num
-    @indent_block_num = @max_indent_block_num
+    i                     = @indent_block_num
+    @indent_block_num     = @max_indent_block_num
     @indent_block_parents[@indent_block_num] = i
   end
 
@@ -65,9 +65,9 @@ module RubySourceFormatter
     @indent_block_num = @indent_block_parents[@indent_block_num]
   end
 
-  def proceed(opt={})
+  def proceed(opt = {})
     #cmd = :all
-    argv  = opt[:argv]  || ARGV
+    argv  = opt[:argv] || ARGV
     input = opt[:input] || STDIN.read
     format(input)
   end
@@ -90,8 +90,8 @@ module RubySourceFormatter
     indent_block_to_child
 
     debug "plus_indent"
-    debug "indent:#{@indent}"
-    debug "indent_block_num=>#{@indent_block_num}"
+    debug "indent:#{ @indent }"
+    debug "indent_block_num=>#{ @indent_block_num }"
   end
 
   def minus_indent
@@ -101,14 +101,16 @@ module RubySourceFormatter
     indent_block_to_parent
 
     debug "minus_indent"
-    debug "indent:#{@indent}"
-    debug "indent_block_num=>#{@indent_block_num}"
+    debug "indent:#{ @indent }"
+    debug "indent_block_num=>#{ @indent_block_num }"
   end
 
   def add(st)
-    st = '' unless st
-    debug "add:#{st}"
+    st    = '' unless st
+    debug "add:#{ st }"
+
     init_line
+
     @last_action_return = false
     @line.last << st
   end
@@ -125,22 +127,24 @@ module RubySourceFormatter
     @block = true
   end
 
-  def ret(force=false)
+  def ret(force = false )
     debug "try_return:"
-    debug "@indent_next:#{@indent_next}"
-    debug "@last_action_return:#{@last_action_return}"
+    debug "@indent_next:#{ @indent_next }"
+    debug "@last_action_return:#{ @last_action_return }"
 
     #return false unless @line
     #return false if @last_action_return
 
     if force || last? || next_on != :on_comment
       debug "do_ret:"
-      debug "insert @line to @lines with @indent_block_num:#{@indent_block_num}"
+      debug "insert @line to @lines with @indent_block_num:#{ @indent_block_num }"
+
       @last_action_return = true
 
       unless @line
         debug "insert empty return line"
-        @lines << [@indent_block_num, [""]]
+
+        @lines << [@indent_block_num, [""] ]
         indent_block_to_new
         return true
       end
@@ -148,7 +152,7 @@ module RubySourceFormatter
       @line.last.rstrip!
       @lines << [@indent_block_num, @line]
       plus_indent if @indent_next
-      @line = nil
+      @line      = nil
       return true
     else
       return false
@@ -254,6 +258,7 @@ module RubySourceFormatter
   end
 
   def format(st)
+    ori = st.clone
     debug "=" * 40
     min_indent = 0
     if st =~ /^(\s)+/
@@ -426,7 +431,8 @@ module RubySourceFormatter
           debug "@no_ret_counter:#{@no_ret_counter}"
         when 'end'
           minus_indent
-          unless previous? :on_nl
+          # コメントは文字列内に改行を含むので
+          unless previous? :on_nl,:on_comment
             ret
           end
           add c
@@ -458,7 +464,7 @@ module RubySourceFormatter
       when :on_nl
         ret true
       when :on_space
-      when :on_tstring_beg,:on_tstring_content,:on_symbeg,:on_period
+      when :on_tstring_beg,:on_tstring_content,:on_symbeg,:on_period,:on_embexpr_end
         add c
       else
         debug "on:else"
@@ -497,14 +503,25 @@ module RubySourceFormatter
 
       # コメントオンリー行スキップ
       next if line[0].strip =~ /^(#|#{ADJUST_EXCEPTSIONS.join("|")})/
-      #next if ar.size < 3
+
+      #
+      # test = true
+      # do_something
+      # ↓にしないように
+      # test         = true
+      # do_something
+      #
+      next if line.size == 1
+      #next if line.size < 3
+
       max_len[block_num] = line[0].size if line[0].size > max_len[block_num]
     end
 
     debug @lines.pretty_inspect
     debug "max_len:#{max_len}"
     debug "indent_parents:#{@indent_block_parents}"
-    @lines.map do |ar|
+
+    ret = @lines.map do |ar|
       line = ar[1]
       block_num = ar[0]
 
@@ -526,6 +543,14 @@ module RubySourceFormatter
         end
       end
     end.join("\n").tap{|o| debug o}
+
+    # 変な変換をしている場合は（ソースがruby文法的に間違っているとか）
+    # 変換せずにコメントを追加して返す
+    if ori.gsub(/[\n ]/,'') == ret.gsub(/[\n ]/,'')
+      ret
+    else
+      "# rsf format error(maybe source error?)\n" + ori
+    end
   end
 end
 

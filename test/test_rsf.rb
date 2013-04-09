@@ -377,6 +377,49 @@ bb:123,ccc:'c'}
   hash.each do |_, v|
     result = v.map { |k, v| v + 1 }
   end
+========================================
+debug "test:\#{@test}"
+========================================
+debug "test:\#{ @test }"
+========================================
+  def indent
+    @indent ||= 0
+    @indent = 0 if @indent < 0
+    a = "  " * @indent
+  end
+========================================
+  def indent
+    @indent ||= 0
+    @indent = 0 if @indent < 0
+    a       = "  " * @indent
+  end
+========== ラベル失敗 でソースが消えないように
+d = {one:1,:two:2 }
+c = 1
+========================================
+# rsf format error(maybe source error?)
+d = {one:1,:two:2 }
+c = 1
+========================================
+  def debug(st)
+    #puts st
+  end
+========================================
+  def debug(st)
+    #puts st
+  end
+========================================
+  @lines<< [@indent_block_num, [""] ]
+  indent_block_to_new
+========================================
+  @lines << [@indent_block_num, [""] ]
+  indent_block_to_new
+========================================
+  @lines<< [@indent_block_num, [""] ]
+  indent_block_to_new(lines)
+========================================
+  @lines << [@indent_block_num, [""] ]
+  indent_block_to_new(lines)
 EOF
 
     test.split(/^====.*?\n/m).each_slice(2) do |from,should_be|
@@ -388,27 +431,13 @@ end
 __END__
 
 以下未達成テスト
-========================================
-debug "indent:\#{@indent}"
-========================================
-debug "indent:\#{ @indent }"
-========================================
-  def indent
-    @indent ||= 0
-    @indent = 0 if @indent < 0
-    "  " * @indent
-  end
-========================================
-  def indent
-    @indent ||= 0
-    @indent = 0 if @indent < 0
-    "  " * @indent
-  end
 
 
-========== ラベル失敗 でソースが消えないように
-d = {one:1,:two:2 }
-c = 1
 ========================================
-d = { one:1, :two: 3 }
-c = 1
+  if a
+  b if c
+  end
+========================================
+  if a
+    b if c
+  end
