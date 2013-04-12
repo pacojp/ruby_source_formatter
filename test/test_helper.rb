@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
-
 #$: << File.dirname(__FILE__) + '/../lib'
+
+require 'coveralls'
+Coveralls.wear!
 
 require 'bundler'
 Bundler.setup
