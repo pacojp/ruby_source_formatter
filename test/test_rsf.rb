@@ -1,4 +1,7 @@
-require File.expand_path(__dir__) + '/test_helper'
+# -*- coding: utf-8 -*-
+
+#require File.expand_path(__dir__) + '/test_helper'
+require File.expand_path(File.dirname(__FILE__) + '/test_helper')
 
 class TestRsf < Test::Unit::TestCase
 
@@ -432,6 +435,11 @@ __END__
 
 以下未達成テスト
 
+
+========================================
+debug "test:\#{[1,2].join(',')}"
+========================================
+debug "test:\#{ [1,2].join(',') }"
 
 ========================================
   if a

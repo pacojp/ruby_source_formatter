@@ -365,6 +365,11 @@ module RubySourceFormatter
           end
         end
       when :on_rbrace
+        # ruby 1.9系だと:on_embexpr_end が:on_rbraceで返ってくる
+        if @on_emb_expr
+          add c
+          next
+        end
         if next? :on_nl,:on_ignored_nl
           unless @no_ret_with_rbrace
             ret
@@ -467,6 +472,9 @@ module RubySourceFormatter
       when :on_tstring_beg,:on_tstring_content,:on_symbeg,:on_period,:on_embexpr_end
         add c
       else
+        if type == :on_embexpr_beg
+          @on_emb_expr = true
+        end
         debug "on:else"
         debug "line_now:#{line_now}"
         ns = " "
