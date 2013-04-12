@@ -1,6 +1,8 @@
 ruby_source_formatter
 =====================
 
+[![Build Status](https://travis-ci.org/pacojp/ruby_source_formatter.png?branch=master)](https://travis-ci.org/pacojp/ruby_source_formatter)
+
 formatting my ruby source :-)
 
 check test/test_rsf.rb for understand what this program aim to do.
