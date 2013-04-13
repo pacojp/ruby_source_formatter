@@ -1,8 +1,4 @@
-ruby_source_formatter
-=====================
-
-[![Build Status](https://travis-ci.org/pacojp/ruby_source_formatter.png?branch=master)](https://travis-ci.org/pacojp/ruby_source_formatter)
-[![Coverage Status](https://coveralls.io/repos/pacojp/ruby_source_formatter/badge.png?branch=master)](https://coveralls.io/r/pacojp/ruby_source_formatter)
+# ruby_source_formatter [![Build Status](https://travis-ci.org/pacojp/ruby_source_formatter.png?branch=master)](https://travis-ci.org/pacojp/ruby_source_formatter) [![Coverage Status](https://coveralls.io/repos/pacojp/ruby_source_formatter/badge.png?branch=master)](https://coveralls.io/r/pacojp/ruby_source_formatter)
 
 
 formatting my ruby source :-)
