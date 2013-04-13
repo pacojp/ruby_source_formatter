@@ -73,7 +73,7 @@ module RubySourceFormatter
 
   # デバッグする際はコメントアウト
   def debug(st)
-    puts st
+    #puts st
   end
 
   def indent
