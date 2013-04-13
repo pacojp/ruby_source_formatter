@@ -66,14 +66,14 @@ module RubySourceFormatter
 
   def proceed(opt = {})
     #cmd = :all
-    argv  = opt[:argv] || ARGV
+    #argv  = opt[:argv] || ARGV
     input = opt[:input] || STDIN.read
     format(input)
   end
 
   # デバッグする際はコメントアウト
   def debug(st)
-    #puts st
+    puts st
   end
 
   def indent
@@ -185,6 +185,18 @@ module RubySourceFormatter
     debug "op:#{c}"
     @last_action_return = false
     init_line
+
+    #
+    # -1 -1.1 等マイナス表示
+    #
+    if c == '-'
+      if next? :on_int,:on_float
+        add c
+      else
+        add("#{c} ")
+      end
+      return
+    end
 
     if return? && @line.size == 1
       @indent_next = true if NO_RETS.include?(c)
@@ -478,9 +490,10 @@ module RubySourceFormatter
         debug "line_now:#{line_now}"
         ns = " "
         if next?(
-          :on_comma,:on_period,
-          :on_lparen,:on_rparen,
-          :on_lbracket,:on_rbracket)
+          :on_comma,    :on_period,
+          :on_lparen,   :on_rparen,
+          :on_lbracket, :on_rbracket,
+          :on_semicolon)
           ns = ''
         end
         ns = '' if @next[2] == '**'
