@@ -452,6 +452,8 @@ module RubySourceFormatter
             ret
           end
           add c
+        when 'self'
+          add c
         when 'else'
           minus_indent
           add c
