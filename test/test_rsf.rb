@@ -12,7 +12,7 @@ class TestRsf < Test::Unit::TestCase
   end
 
   def assert_format(should_be, from)
-    assert_equal should_be, @klass.format(from).chomp
+    assert_equal should_be, @klass.proceed_input(from).chomp
   end
 
   def test_proceed
@@ -464,6 +464,10 @@ c = 1
 ========================================
   self.path = path
   whites    = []
+========================================
+  t.string(:name,    :null => false, :limit=>20)
+========================================
+  t.string(:name, :null => false, :limit => 20)
 EOF
 
     test.split(/^====.*?\n/m).each_slice(2) do |from,should_be|
@@ -494,3 +498,10 @@ debug "test:\#{ [1,2].join(',') }"
   if a
     b if c
   end
+
+
+========================================
+  t.string :name,    :null => false, :limit=>20
+========================================
+  t.string :name, :null => false, :limit => 20
+

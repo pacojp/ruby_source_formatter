@@ -26,9 +26,11 @@ module RubySourceFormatter
     @no_ret_counter       = 0
     @last_action_return   = false
     @indent_block_num     = 1
+    @brace_depth          = 0 # 何も考えず{}の深さを取得
     # gem無し単体で動かしたいので簡単な木構造を用意
     @max_indent_block_num = 1
     @indent_block_parents = {1=>0}
+    @next                 = nil
   end
 
   def init_line
@@ -65,10 +67,23 @@ module RubySourceFormatter
   end
 
   def proceed(opt = {})
-    #cmd = :all
-    #argv  = opt[:argv] || ARGV
     input = opt[:input] || STDIN.read
-    format(input)
+    proceed_input(input)
+  end
+
+  def proceed_input(input)
+    begin
+      format(input)
+    rescue => e
+      debug '!!' * 80
+      begin
+        format(input,false)
+      rescue => e2
+        debug "real error:" + e2.message
+        debug e2.backtrace.join("\n")
+        e.message
+      end
+    end
   end
 
   # デバッグする際はコメントアウト
@@ -268,7 +283,7 @@ module RubySourceFormatter
     opt.include?(previous_on)
   end
 
-  def format(st)
+  def format(st,force_brace = true)
     ori = st.clone
     debug "=" * 40
     min_indent = 0
@@ -280,8 +295,10 @@ module RubySourceFormatter
     add_brace = false
     if st.strip =~ /^\{/ && st.strip =~ /\}$/
     else
-      add_brace = true
-      st = "{\n#{st}\n}"
+      if force_brace
+        add_brace = true
+        st = "{\n#{st}\n}"
+      end
     end
 
     init
@@ -328,6 +345,7 @@ module RubySourceFormatter
       c = ar[2]
       case type = ar[1]
       when :on_lbrace
+        @brace_depth += 1
         if previous? :on_ident
           start_block
         end
@@ -376,6 +394,7 @@ module RubySourceFormatter
           end
         end
       when :on_rbrace
+        @brace_depth -= 1
         # ruby 1.9系だと:on_embexpr_end が:on_rbraceで返ってくる
         if @on_emb_expr
           add c
@@ -498,7 +517,7 @@ module RubySourceFormatter
           :on_semicolon)
           ns = ''
         end
-        ns = '' if @next[2] == '**'
+        ns = '' if @next && @next[2] == '**'
         ns = '' if next?(:on_op) && @next[2] == '|'
 
         add "#{c}#{ns}"
@@ -571,7 +590,12 @@ module RubySourceFormatter
     if ori.gsub(/[\n ]/,'') == ret.gsub(/[\n ]/,'')
       ret
     else
-      "# rsf format error(maybe source error?)\n" + ori
+      debug "== original =="
+      debug ori
+      debug "== proceeded =="
+      debug ret
+      debug "==============="
+      raise "# rsf format error(maybe source error?)\n" + ori
     end
   end
 end
